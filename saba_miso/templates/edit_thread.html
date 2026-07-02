@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}スレッド編集 | サバの味噌煮{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h2>スレッド編集</h2>
+    <form method="post" action="{{ url_for('board.edit_thread', thread_id=thread.id) }}" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>タイトル <input type="text" name="title" maxlength="255" value="{{ thread.title }}" required></label>
+      <label>名前（任意） <input type="text" name="author_name" maxlength="100" value="{{ thread.author_name }}"></label>
+      <label>本文 <textarea name="body" rows="6" required>{{ thread.body }}</textarea></label>
+      <label>編集キー <input type="password" name="edit_key" required></label>
+      <button type="submit">更新する</button>
+    </form>
+  </section>
+{% endblock %}

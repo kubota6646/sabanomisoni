@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}スレッド一覧 | サバの味噌煮{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h2>スレッド一覧</h2>
+    {% if threads %}
+      <ul class="thread-list">
+        {% for thread in threads %}
+          <li>
+            <a href="{{ url_for('board.thread_detail', thread_id=thread.id) }}">{{ thread.title }}</a>
+            <span>{{ thread.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            <span>{{ thread.responses|length }}レス</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>まだスレッドがありません。</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>新規スレッド作成</h2>
+    <form method="post" action="{{ url_for('board.create_thread') }}" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>タイトル <input type="text" name="title" maxlength="255" required></label>
+      <label>名前（任意） <input type="text" name="author_name" maxlength="100"></label>
+      <label>本文 <textarea name="body" rows="6" required></textarea></label>
+      <label>編集キー <input type="password" name="edit_key" required></label>
+      <button type="submit">作成する</button>
+    </form>
+  </section>
+{% endblock %}
