@@ -86,8 +86,7 @@ Get-Item "C:\Windows\SysWOW64\inetsrv\HttpPlatformHandler*.dll" | Select-Object 
 C:\inetpub\sabanomisoni\.venv\Scripts\pip.exe install gunicorn
 ```
 
-> **注意**: gunicorn は Windows 環境では公式サポート外ですが、waitress の代替として動作する場合があります。
-> 動作しない場合は waitress のラッパースクリプトを gunicorn 相当の形で作成することも検討してください。
+> **注意**: gunicorn は `fork()` システムコールに依存しており、Windows では動作しません。Windows 環境では waitress を使用してください（方針 C は Linux 環境向けの参考情報です）。
 
 ---
 
