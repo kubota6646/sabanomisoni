@@ -34,17 +34,11 @@ Flask + SQLAlchemy を使ったサーバーサイドレンダリング構成で�
 
 ## 技術スタック
 
-| 項目 | 内容 |
-|------|------|
-| 言語 | Python 3.12 |
-| Web フレームワーク | Flask 3.1 |
-| ORM | Flask-SQLAlchemy 3.1 |
-| データベース | SQLite（デフォルト）/ MySQL 8.x（本番推奨）|
-| WSGI サーバー（Linux） | Gunicorn 23 |
-| WSGI サーバー（Windows） | Waitress 3.0 |
-| フォームバリデーション | Flask-WTF 1.3 |
-| レート制限 | Flask-Limiter 4.1 |
-| セキュリティヘッダー | Flask-Talisman 1.1 |
+- Python 3.12 以降（3.13対応済み）
+- Flask
+- Flask-SQLAlchemy
+- SQLite（デフォルト）/ MySQL（本番推奨）
+- Gunicorn（Linux/Unix）/ Waitress（Windows）
 
 ---
 
@@ -481,6 +475,9 @@ python -m venv .venv
 
 # 依存ライブラリをインストール
 pip install -r requirements.txt
+
+# Windows用のWSGIサーバー（Waitress）とその他の依存関係をインストール
+pip install waitress python-dotenv
 ```
 
 > **注意**: PowerShell の実行ポリシーでスクリプト実行がブロックされる場合は以下を実行してください。
@@ -500,10 +497,11 @@ notepad .env
 以下の内容を書き換えて保存します。
 
 ```
-SECRET_KEY=<ランダムな文字列>
+SECRET_KEY=（例: a1b2c3d4e5f6... のようなランダムな文字列 ※必須）
 DATABASE_URL=mysql+pymysql://sabauser:あなたのパスワード@localhost/saba_miso
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=強力なパスワード
+WTF_CSRF_SECRET_KEY=（SECRET_KEYと同じ値でも可）
 ```
 
 > **ヒント**: `SECRET_KEY` の生成は PowerShell で以下を実行してください。
@@ -581,25 +579,26 @@ notepad C:\inetpub\sabanomisoni\web.config
       <add name="httpPlatformHandler" path="*" verb="*" modules="httpPlatformHandler" resourceType="Unspecified" />
     </handlers>
     <!--
-      processPath に waitress-serve.exe を直接指定することで、Python Launcher (py.exe) や
-      PATH 解決を完全に回避し、仮想環境の Python だけを使って waitress を起動します。
+      processPath に仮想環境の python.exe を指定し、run_waitress.py を起動します。
+      run_waitress.py が .env の読み込みと Waitress の起動を担います。
       %APPL_PHYSICAL_PATH% は IIS がアプリケーションの物理パスに展開します。
     -->
-    <httpPlatform processPath="%APPL_PHYSICAL_PATH%\.venv\Scripts\waitress-serve.exe"
-                  arguments="--port=%HTTP_PLATFORM_PORT% --host=127.0.0.1 app:app"
+    <httpPlatform processPath="%APPL_PHYSICAL_PATH%\.venv\Scripts\python.exe"
+                  arguments="%APPL_PHYSICAL_PATH%\run_waitress.py"
                   stdoutLogEnabled="true"
                   stdoutLogFile="%APPL_PHYSICAL_PATH%\logs\stdout.log"
-                  startupTimeLimit="60"
+                  startupTimeLimit="120"
                   requestTimeout="00:04:00">
       <environmentVariables>
         <environmentVariable name="PYTHONPATH" value="%APPL_PHYSICAL_PATH%" />
+        <environmentVariable name="PYTHONUNBUFFERED" value="1" />
       </environmentVariables>
     </httpPlatform>
   </system.webServer>
 </configuration>
 ```
 
-> **ポイント**: `processPath` に `waitress-serve.exe` を直接指定することで、Python Launcher（`py.exe`）や `PATH` 経由で別の Python が起動されてしまう問題を回避しています。アプリの環境変数（`SECRET_KEY`・`DATABASE_URL` など）はアプリケーションディレクトリの `.env` ファイルから読み込まれます（ステップ 5 で作成済み）。IIS を起動する前に `.env` ファイルが存在することを確認してください。
+> **ポイント**: `processPath` に仮想環境の `python.exe` を直接指定し、`run_waitress.py` を引数として渡すことで、`PATH` 経由で別の Python が起動されてしまう問題を回避しています。アプリの環境変数（`SECRET_KEY`・`DATABASE_URL` など）はアプリケーションディレクトリの `.env` ファイルから読み込まれます（ステップ 5 で作成済み）。IIS を起動する前に `.env` ファイルが存在することを確認してください。
 
 5. ログ出力用フォルダを作成します。
 
@@ -611,7 +610,46 @@ New-Item -ItemType Directory -Path C:\inetpub\sabanomisoni\logs -Force
 
 ---
 
-### ステップ 9 — ファイアウォールの設定
+### ステップ 10 — アクセス権限の設定
+
+IISアプリケーションプールのアカウントに必要な権限を付与します。
+
+```powershell
+# アプリケーションフォルダ全体に読み取り・実行権限
+icacls "C:\inetpub\sabanomisoni" /grant "IIS AppPool\sabanomisoni:(OI)(CI)RX" /T
+
+# logsフォルダに書き込み権限
+icacls "C:\inetpub\sabanomisoni\logs" /grant "IIS AppPool\sabanomisoni:(OI)(CI)M" /T
+
+# instanceフォルダ（SQLite用）に書き込み権限
+icacls "C:\inetpub\sabanomisoni\instance" /grant "IIS AppPool\sabanomisoni:(OI)(CI)M" /T
+```
+
+---
+
+### ステップ 11 — IISアプリケーションプールの設定
+
+IISマネージャーで以下を設定します：
+
+1. 左側のツリーから「**アプリケーション プール**」をクリック
+2. `sabanomisoni`を右クリック → 「**詳細設定**」
+3. 以下の設定を変更：
+   - **.NET CLR バージョン**: **マネージ コードなし**（重要！）
+   - **32 ビット アプリケーションの有効化**: **False**
+
+---
+
+### ステップ 12 — ハンドラーマッピングのロック解除
+
+管理者権限のPowerShellで以下を実行：
+
+```powershell
+C:\Windows\System32\inetsrv\appcmd.exe unlock config -section:system.webServer/handlers
+```
+
+---
+
+### ステップ 13 — ファイアウォールの設定
 
 ```powershell
 New-NetFirewallRule -DisplayName "Allow HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
@@ -619,7 +657,7 @@ New-NetFirewallRule -DisplayName "Allow HTTP" -Direction Inbound -Protocol TCP -
 
 ---
 
-### ステップ 10 — 動作確認
+### ステップ 14 — 動作確認
 
 ブラウザで `http://<サーバーのIPアドレス>` または `http://localhost` にアクセスして掲示板が表示されれば完了です。
 
@@ -669,13 +707,35 @@ Start-Website -Name "sabanomisoni"
 
 ### トラブルシューティング（IIS）
 
-| 症状 | 確認・対処方法 |
-|------|--------------|
-| 503 エラーが出る | `C:\inetpub\sabanomisoni\logs\stdout.log` を確認してください |
-| `waitress-serve.exe` が見つからない | 仮想環境を有効化した状態で `pip install waitress` を実行してください |
-| `%APPL_PHYSICAL_PATH%` が展開されない | IIS マネージャーでサイトの「基本設定」→「物理パス」を確認してください |
-| 起動時に別の Python が使われる | HttpPlatformHandler を最新版に更新してください |
-| データベース接続エラー | `.env` の `DATABASE_URL` と MySQL サービスの起動状態を確認してください |
+- **ERR_CONNECTION_RESET または 404エラーが出る場合**: 
+  - `C:\inetpub\sabanomisoni\logs\stdout.log_*` ファイルを確認してエラー内容を確認してください
+  - ログに「Access is denied」が表示される場合は、ステップ10の権限設定を再実行してください
+  - ログに「Fatal Python error: Failed to import encodings module」が表示される場合、web.configの`processPath`が仮想環境のPythonを正しく指定しているか確認してください
+
+- **ログファイルが生成されない場合**: 
+  - IISアプリケーションプールが「マネージ コードなし」に設定されているか確認してください
+  - logsフォルダの権限を確認してください：
+    ```powershell
+    icacls "C:\inetpub\sabanomisoni\logs"
+    ```
+
+- **「Python313」などシステムのPythonが参照される場合**:
+  - wfastcgiがインストールされていれば無効化してください：
+    ```powershell
+    cd C:\inetpub\sabanomisoni
+    .\.venv\Scripts\Activate.ps1
+    wfastcgi-disable
+    ```
+  - IISを完全に再起動してください：
+    ```powershell
+    iisreset /restart
+    ```
+
+- **仮想環境のパスエラー**: `web.config` 内の `processPath` が `C:\inetpub\sabanomisoni\.venv\Scripts\python.exe` を指しているか確認してください
+
+- **データベース接続エラー**: `.env` ファイルの `DATABASE_URL` が正しいか、MySQL サービスが起動しているか確認してください
+
+- **SECRET_KEYエラー**: `.env`ファイルに`SECRET_KEY`が設定されているか確認してください
 
 ---
 
