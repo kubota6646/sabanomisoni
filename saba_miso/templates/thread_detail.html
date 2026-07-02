@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ thread.title }} | サバの味噌煮{% endblock %}
+{% block content %}
+  <section class="panel">
+    <h2>{{ thread.title }}</h2>
+    <div class="meta">投稿者: {{ thread.author_name }} / 投稿日時: {{ thread.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+    <p class="post-body">{{ thread.body }}</p>
+    <div class="inline-actions">
+      <a href="{{ url_for('board.edit_thread_form', thread_id=thread.id) }}">編集</a>
+    </div>
+    <form method="post" action="{{ url_for('board.delete_thread', thread_id=thread.id) }}" class="inline-form">
+      <label>スレッド削除キー <input type="password" name="edit_key" required></label>
+      <button type="submit">スレッド削除</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>レス一覧</h2>
+    {% if thread.responses %}
+      <ol class="response-list">
+        {% for response in thread.responses %}
+          <li>
+            <div class="meta">No.{{ loop.index }} / 投稿者: {{ response.author_name }} / 投稿日時: {{ response.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            <p class="post-body">{{ response.body }}</p>
+            <div class="inline-actions">
+              <a href="{{ url_for('board.edit_response_form', response_id=response.id) }}">編集</a>
+            </div>
+            <form method="post" action="{{ url_for('board.delete_response', response_id=response.id) }}" class="inline-form">
+              <label>レス削除キー <input type="password" name="edit_key" required></label>
+              <button type="submit">レス削除</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p>まだレスはありません。</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>レス投稿</h2>
+    <form method="post" action="{{ url_for('board.create_response', thread_id=thread.id) }}" class="stack-form">
+      <label>名前（任意） <input type="text" name="author_name" maxlength="100"></label>
+      <label>本文 <textarea name="body" rows="5" required></textarea></label>
+      <label>編集キー <input type="password" name="edit_key" required></label>
+      <button type="submit">投稿する</button>
+    </form>
+  </section>
+{% endblock %}

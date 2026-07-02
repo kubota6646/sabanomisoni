@@ -1,0 +1,185 @@
+body {
+  margin: 0;
+  background: #f3f3f3;
+  color: #222;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+}
+
+a {
+  color: #004b99;
+}
+
+button {
+  cursor: pointer;
+}
+
+.wrapper {
+  width: min(960px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.site-header {
+  background: #143d59;
+  color: #fff;
+  padding: 1rem 0;
+  margin-bottom: 1.5rem;
+}
+
+.site-header a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.site-header .wrapper,
+.space-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.site-header nav {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #d3d3d3;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.narrow {
+  max-width: 420px;
+}
+
+.stack-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.stack-form label,
+.inline-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+input,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem;
+  border: 1px solid #b6b6b6;
+  border-radius: 4px;
+  font: inherit;
+}
+
+button {
+  width: fit-content;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: #143d59;
+  color: #fff;
+}
+
+.thread-list,
+.admin-list,
+.response-list,
+.flash-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.thread-list li,
+.admin-list li,
+.response-list li {
+  border-top: 1px solid #ececec;
+  padding: 0.85rem 0;
+}
+
+.thread-list li:first-child,
+.admin-list li:first-child,
+.response-list li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.thread-list li,
+.admin-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.response-list li {
+  list-style: decimal inside;
+}
+
+.post-body {
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.inline-actions {
+  margin: 0.5rem 0;
+}
+
+.inline-form {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: end;
+}
+
+.flash-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.flash {
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+}
+
+.flash-success {
+  background: #e8f7eb;
+  color: #0f5c22;
+}
+
+.flash-error {
+  background: #fdeaea;
+  color: #8a1f1f;
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .site-header .wrapper,
+  .thread-list li,
+  .admin-list li,
+  .space-between {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}サバの味噌煮{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrapper">
+        <h1><a href="{{ url_for('board.index') }}">サバの味噌煮</a></h1>
+        <nav>
+          <a href="{{ url_for('board.index') }}">スレッド一覧</a>
+          <a href="{{ url_for('admin.dashboard') }}">管理者</a>
+        </nav>
+      </div>
+    </header>
+    <main class="wrapper">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <ul class="flash-list">
+            {% for category, message in messages %}
+              <li class="flash flash-{{ category }}">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
