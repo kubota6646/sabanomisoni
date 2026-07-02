@@ -276,6 +276,8 @@ server {
 
     location / {
         # Nginxレベルのレートリミットを適用する（バースト10リクエストまで許容）
+        # ※ FlaskのレートリミットはエンドポイントごとにIPあたり10回/分に設定されており、
+        #    Nginxの制限（10req/s）はDDoS対策・大量アクセスの早期遮断を目的としています。
         limit_req zone=sabanomisoni burst=10 nodelay;
 
         proxy_pass http://unix:/run/sabanomisoni.sock;

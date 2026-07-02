@@ -16,7 +16,7 @@ def login():
         user = AdminUser.query.filter_by(username=username).first()
         if user and user.matches_password(request.form.get("password", "")):
             # ログイン成功を記録する
-            db.session.add(AdminLoginLog(
+            db.session.add(AdminLoginLog.create(
                 username=username,
                 ip_address=get_client_ip(),
                 success=True,
@@ -28,7 +28,7 @@ def login():
             flash("管理者としてログインしました。", "success")
             return redirect(url_for("admin.dashboard"))
         # ログイン失敗を記録する（ブルートフォース攻撃の検知に使用）
-        db.session.add(AdminLoginLog(
+        db.session.add(AdminLoginLog.create(
             username=username,
             ip_address=get_client_ip(),
             success=False,

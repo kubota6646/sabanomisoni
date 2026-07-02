@@ -43,3 +43,12 @@ CREATE TABLE banned_ips (
     reason TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 管理者ログイン履歴テーブル（ブルートフォース攻撃の検知・監査に使用する）
+CREATE TABLE admin_login_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    success BOOLEAN NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

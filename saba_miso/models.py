@@ -124,3 +124,7 @@ class AdminLoginLog(db.Model):
     ip_address = db.Column(db.String(45), nullable=False)
     success = db.Column(db.Boolean, nullable=False)
     created_at = db.Column(db.DateTime, default=current_utc_time, nullable=False)
+
+    @classmethod
+    def create(cls, username, ip_address, success):
+        return cls(username=username, ip_address=ip_address, success=success)
