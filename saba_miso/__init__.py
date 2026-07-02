@@ -13,6 +13,45 @@ from .extensions import db, limiter
 # CSRF保護インスタンス（application factoryパターンのため、init_app()で初期化する）
 csrf = CSRFProtect()
 
+_SQLITE_FALLBACK_URI = "sqlite:///saba_miso.db"
+
+
+def _resolve_database_uri():
+    """DATABASE_URL 環境変数からデータベース URI を決定する。
+
+    MySQL URL が設定されていても接続できない場合は SQLite にフォールバックする。
+    DATABASE_URL が未設定の場合も SQLite を使用する。
+    """
+    database_url = os.environ.get("DATABASE_URL", "").strip()
+
+    if not database_url:
+        return _SQLITE_FALLBACK_URI
+
+    if database_url.startswith("mysql"):
+        try:
+            import pymysql
+            from urllib.parse import urlparse
+
+            # mysql+pymysql:// スキームを urllib で解析できる形式に変換する
+            parsed = urlparse(database_url.split("+", 1)[-1])  # pymysql://... 部分
+            connect_kwargs = {
+                "host": parsed.hostname or "localhost",
+                "port": parsed.port or 3306,
+                "user": parsed.username or "",
+                "passwd": parsed.password or "",
+                "database": (parsed.path or "").lstrip("/"),
+                "connect_timeout": 3,
+            }
+            pymysql.connect(**connect_kwargs).close()
+        except Exception:
+            print(
+                "警告: MySQL に接続できません。SQLite にフォールバックします。"
+                f" (DATABASE_URL={database_url!r})"
+            )
+            return _SQLITE_FALLBACK_URI
+
+    return database_url
+
 
 def create_app(test_config=None):
     load_dotenv()
@@ -26,9 +65,7 @@ def create_app(test_config=None):
 
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-key"),
-        SQLALCHEMY_DATABASE_URI=os.environ.get(
-            "DATABASE_URL", "sqlite:///saba_miso.db"
-        ),
+        SQLALCHEMY_DATABASE_URI=_resolve_database_uri(),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",

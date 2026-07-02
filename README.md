@@ -1,7 +1,8 @@
 # サバの味噌煮
 
 匿名で利用できるシンプルな総合掲示板 Web アプリケーションです。  
-Flask + SQLAlchemy を使ったサーバーサイドレンダリング構成で、MySQL での運用を前提にしています。
+Flask + SQLAlchemy を使ったサーバーサイドレンダリング構成です。
+MySQL を使わない場合は自動的に SQLite にフォールバックします。
 
 ## 主な機能
 
@@ -19,11 +20,11 @@ Flask + SQLAlchemy を使ったサーバーサイドレンダリング構成で�
 - Python 3.12
 - Flask
 - Flask-SQLAlchemy
-- MySQL（本番想定）
+- SQLite（デフォルト）/ MySQL（本番推奨）
 
 ## セットアップ
 
-1. Python 3.12 と MySQL を用意します。
+1. Python 3.12 を用意します。本番環境で MySQL を使う場合は MySQL も用意します。
 2. 依存関係をインストールします。
 
    ```bash
@@ -38,7 +39,7 @@ Flask + SQLAlchemy を使ったサーバーサイドレンダリング構成で�
    cp .env.example .env
    ```
 
-4. MySQL にデータベースを作成し、`.env` の `DATABASE_URL` を更新します。
+4. （省略可）MySQL を使う場合はデータベースを作成し、`.env` の `DATABASE_URL` のコメントを外して接続情報を設定します。`DATABASE_URL` が未設定または MySQL に接続できない場合は、自動的に SQLite（`instance/saba_miso.db`）を使用します。
 5. テーブルを作成します。
 
    ```bash
@@ -61,10 +62,16 @@ Flask + SQLAlchemy を使ったサーバーサイドレンダリング構成で�
 python -m unittest discover -s tests
 ```
 
-## データベーススキーマ
+## データベース
+
+| 状況 | 使用する DB |
+|------|------------|
+| `DATABASE_URL` が未設定 | SQLite（`instance/saba_miso.db`）|
+| `DATABASE_URL` に MySQL URL を設定したが接続不可 | SQLite（自動フォールバック）|
+| `DATABASE_URL` に MySQL URL を設定し接続可 | MySQL |
 
 - MySQL 向けスキーマ: `database/schema.sql`
-- アプリケーションは `DATABASE_URL` で指定した DB に対して SQLAlchemy を利用します
+- アプリケーションは SQLAlchemy を利用するため、DB の違いを意識せずに使えます
 
 ## 画面 / ルート
 
