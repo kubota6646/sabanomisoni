@@ -34,7 +34,7 @@ Flask + SQLAlchemy を使ったサーバーサイドレンダリング構成で�
 
 ## 技術スタック
 
-- Python 3.12 以降（3.13対応済み）
+- Python 3.12 以降（3.13 対応済み）
 - Flask
 - Flask-SQLAlchemy
 - SQLite（デフォルト）/ MySQL（本番推奨）
@@ -475,9 +475,6 @@ python -m venv .venv
 
 # 依存ライブラリをインストール
 pip install -r requirements.txt
-
-# Windows用のWSGIサーバー（Waitress）とその他の依存関係をインストール
-pip install waitress python-dotenv
 ```
 
 > **注意**: PowerShell の実行ポリシーでスクリプト実行がブロックされる場合は以下を実行してください。
@@ -501,7 +498,7 @@ SECRET_KEY=（例: a1b2c3d4e5f6... のようなランダムな文字列 ※必�
 DATABASE_URL=mysql+pymysql://sabauser:あなたのパスワード@localhost/saba_miso
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=強力なパスワード
-WTF_CSRF_SECRET_KEY=（SECRET_KEYと同じ値でも可）
+WTF_CSRF_SECRET_KEY=（SECRET_KEY と同じ値でも可）
 ```
 
 > **ヒント**: `SECRET_KEY` の生成は PowerShell で以下を実行してください。
@@ -634,7 +631,7 @@ IISマネージャーで以下を設定します：
 1. 左側のツリーから「**アプリケーション プール**」をクリック
 2. `sabanomisoni`を右クリック → 「**詳細設定**」
 3. 以下の設定を変更：
-   - **.NET CLR バージョン**: **マネージ コードなし**（重要！）
+   - **.NET CLR バージョン**: **マネージ コードなし** （重要！）
    - **32 ビット アプリケーションの有効化**: **False**
 
 ---

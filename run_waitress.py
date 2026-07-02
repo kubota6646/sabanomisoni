@@ -20,10 +20,11 @@ try:
     from app import app
 
     port = int(os.environ.get('HTTP_PLATFORM_PORT', '8000'))
+    threads = int(os.environ.get('WAITRESS_THREADS', '4'))
     print(f'Starting Waitress on port {port}', flush=True)
     sys.stdout.flush()
 
-    serve(app, host='127.0.0.1', port=port, threads=4)
+    serve(app, host='127.0.0.1', port=port, threads=threads)
 
 except Exception as e:
     print(f'Error starting application: {e}', file=sys.stderr, flush=True)
