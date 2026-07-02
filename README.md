@@ -1,66 +1,90 @@
-# サバの味噌煮
+# サバの味噌煮 🐟
 
 匿名で利用できるシンプルな総合掲示板 Web アプリケーションです。  
-Flask + SQLAlchemy を使ったサーバーサイドレンダリング構成です。
-MySQL を使わない場合は自動的に SQLite にフォールバックします。
+Flask + SQLAlchemy を使ったサーバーサイドレンダリング構成で、MySQL / SQLite の両方に対応しています。
+
+---
+
+## 目次
+
+- [主な機能](#主な機能)
+- [技術スタック](#技術スタック)
+- [ローカル開発環境のセットアップ](#ローカル開発環境のセットアップ)
+- [テスト](#テスト)
+- [データベース](#データベース)
+- [画面 / ルート](#画面--ルート)
+- [セキュリティ上の考慮](#セキュリティ上の考慮)
+- [AWS EC2 + RDS デプロイ手順](#aws-ec2--rds-デプロイ手順)
+- [オンプレミス環境でのデプロイ手順（Windows Server + IIS）](#オンプレミス環境でのデプロイ手順windows-server--iis)
+
+---
 
 ## 主な機能
 
-- スレッド一覧 / スレッド作成
-- スレッド詳細 / レス投稿
-- 編集キーによる本人のみの編集・削除
-- 管理者ログイン
-- 全スレッド / 全レスの管理者削除
-- NG ワード管理
-- IP アドレス記録と BAN
-- PC / スマートフォン向けのシンプルなレスポンシブ UI
+| 機能 | 説明 |
+|------|------|
+| スレッド管理 | スレッドの一覧表示・作成・編集・削除 |
+| レス投稿 | スレッドへの返信投稿・編集・削除 |
+| 編集キー | 投稿者本人のみが編集・削除できる編集キー機能 |
+| 管理者機能 | 管理者ログイン・全スレッド/レスの削除・NG ワード管理 |
+| BAN 機能 | 投稿 IP の記録と管理者による BAN |
+| レスポンシブ UI | PC / スマートフォン向けのシンプルなデザイン |
+
+---
 
 ## 技術スタック
 
-- Python 3.12
-- Flask
-- Flask-SQLAlchemy
-- SQLite（デフォルト）/ MySQL（本番推奨）
+| 項目 | 内容 |
+|------|------|
+| 言語 | Python 3.12 |
+| Web フレームワーク | Flask 3.1 |
+| ORM | Flask-SQLAlchemy 3.1 |
+| データベース | SQLite（デフォルト）/ MySQL 8.x（本番推奨）|
+| WSGI サーバー（Linux） | Gunicorn 23 |
+| WSGI サーバー（Windows） | Waitress 3.0 |
+| フォームバリデーション | Flask-WTF 1.3 |
+| レート制限 | Flask-Limiter 4.1 |
+| セキュリティヘッダー | Flask-Talisman 1.1 |
 
-## セットアップ
+---
 
-1. Python 3.12 を用意します。本番環境で MySQL を使う場合は MySQL も用意します。
-2. 依存関係をインストールします。
+## ローカル開発環境のセットアップ
 
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
+```bash
+# 1. リポジトリをクローン
+git clone https://github.com/<あなたのユーザー名>/sabanomisoni.git
+cd sabanomisoni
 
-3. 環境変数を設定します。
+# 2. Python 仮想環境を作成・有効化
+python -m venv .venv
+source .venv/bin/activate       # Windows: .venv\Scripts\Activate.ps1
 
-   ```bash
-   cp .env.example .env
-   ```
+# 3. 依存ライブラリをインストール
+pip install -r requirements.txt
 
-4. （省略可）MySQL を使う場合はデータベースを作成し、`.env` の `DATABASE_URL` のコメントを外して接続情報を設定します。`DATABASE_URL` が未設定または MySQL に接続できない場合は、自動的に SQLite（`instance/saba_miso.db`）を使用します。
-5. テーブルを作成します。
+# 4. 環境変数を設定
+cp .env.example .env
+# .env をエディタで開き、SECRET_KEY・ADMIN_USERNAME・ADMIN_PASSWORD を設定してください
 
-   ```bash
-   flask --app app.py init-db
-   ```
+# 5. テーブルを作成（初回のみ）
+flask --app app.py init-db
 
-   `ADMIN_USERNAME` と `ADMIN_PASSWORD` を設定しておくと、初回実行時に管理者ユーザーも作成されます。
+# 6. 開発サーバーを起動
+flask --app app.py run --debug
+```
 
-6. 開発サーバーを起動します。
+> **MySQL を使う場合**: `.env` の `DATABASE_URL` のコメントを外して接続情報を設定してください。  
+> 未設定または接続できない場合は自動的に SQLite（`instance/saba_miso.db`）を使用します。
 
-   ```bash
-   flask --app app.py run --debug
-   ```
+---
 
 ## テスト
-
-標準ライブラリの `unittest` を使っています。
 
 ```bash
 python -m unittest discover -s tests
 ```
+
+---
 
 ## データベース
 
@@ -71,25 +95,34 @@ python -m unittest discover -s tests
 | `DATABASE_URL` に MySQL URL を設定し接続可 | MySQL |
 
 - MySQL 向けスキーマ: `database/schema.sql`
-- アプリケーションは SQLAlchemy を利用するため、DB の違いを意識せずに使えます
+
+---
 
 ## 画面 / ルート
 
-- `/` : スレッド一覧 / 新規作成
-- `/threads/<id>` : スレッド詳細 / レス一覧 / レス投稿
-- `/threads/<id>/edit` : スレッド編集
-- `/responses/<id>/edit` : レス編集
-- `/admin/login` : 管理者ログイン
-- `/admin` : 管理者ダッシュボード
+| パス | 内容 |
+|------|------|
+| `/` | スレッド一覧 / 新規作成 |
+| `/threads/<id>` | スレッド詳細 / レス一覧 / レス投稿 |
+| `/threads/<id>/edit` | スレッド編集 |
+| `/responses/<id>/edit` | レス編集 |
+| `/admin/login` | 管理者ログイン |
+| `/admin` | 管理者ダッシュボード |
+
+---
 
 ## セキュリティ上の考慮
 
-- 編集キーはハッシュ化して保存
-- 管理者パスワードはハッシュ化して保存
+- 編集キー・管理者パスワードはハッシュ化して保存
 - ORM により SQL インジェクションを回避
 - Jinja2 自動エスケープと `white-space: pre-wrap` で XSS を抑制
+- CSRF トークン保護（Flask-WTF）
+- エンドポイントごとのレート制限（Flask-Limiter）
+- セキュリティヘッダーの自動付与（Flask-Talisman）
 - NG ワード投稿を拒否
 - 投稿 IP を保存し、管理者が BAN 可能
+
+---
 
 ## AWS EC2 + RDS デプロイ手順
 
@@ -98,76 +131,72 @@ python -m unittest discover -s tests
 ### 前提
 
 - AWS アカウントをお持ちであること
-- ターミナル（Windows なら「コマンドプロンプト」または「PowerShell」、Mac なら「ターミナル」）を使えること
+- ターミナル（Windows なら PowerShell、Mac/Linux なら Terminal）を使えること
 
 ---
 
-### ステップ 1 — RDS (MySQL データベース) の作成
+### ステップ 1 — RDS (MySQL) の作成
 
 1. [AWS マネジメントコンソール](https://console.aws.amazon.com/) にログインします。
-2. 上部の検索バーで **「RDS」** と入力し、RDS ページを開きます。
-3. 「**データベースの作成**」ボタンをクリックします。
-4. 以下の通り設定します。
-   - エンジンのタイプ: **MySQL**
-   - テンプレート: **無料利用枠**（12 か月間無料）
-   - DB インスタンス識別子: 任意（例: `saba-miso-db`）
-   - マスターユーザー名: 任意（例: `dbadmin`）※**必ずメモしてください**（アプリの管理者ユーザーとは別物です）
-   - マスターパスワード: 英数字記号を含む強力なパスワード ※**必ずメモしてください**
-   - パブリックアクセス: **「なし」**（EC2 経由でのみ接続するため）
-   - 最初のデータベース名（追加設定の中）: `saba_miso`
-5. 「**データベースの作成**」をクリックし、数分待ちます。
-6. 作成後、RDS の詳細ページから **「エンドポイント」**（例: `saba-miso-db.xxxxxx.ap-northeast-1.rds.amazonaws.com`）をメモします。
-7. RDS のセキュリティグループの「インバウンドルール」に、後で作成する EC2 からのポート **3306** (MySQL/Aurora) 接続を許可するルールを追加します。
+2. **RDS** を開き、「**データベースの作成**」をクリックします。
+3. 以下の通り設定します。
+
+   | 項目 | 設定値 |
+   |------|--------|
+   | エンジン | MySQL |
+   | テンプレート | 無料利用枠 |
+   | DB インスタンス識別子 | 任意（例: `saba-miso-db`）|
+   | マスターユーザー名 | 任意（例: `dbadmin`）※メモ必須 |
+   | マスターパスワード | 強力なパスワード ※メモ必須 |
+   | パブリックアクセス | なし |
+   | 最初のデータベース名 | `saba_miso` |
+
+4. 「**データベースの作成**」をクリックし、数分待ちます。
+5. 作成後、RDS の詳細ページから **エンドポイント**（例: `saba-miso-db.xxxxxx.ap-northeast-1.rds.amazonaws.com`）をメモします。
+6. RDS のセキュリティグループの「インバウンドルール」に、EC2 からのポート **3306** 接続を許可するルールを追加します。
 
 ---
 
 ### ステップ 2 — EC2 インスタンスの作成
 
-1. AWS コンソールで **「EC2」** を開きます。
-2. 「**インスタンスを起動**」をクリックします。
-3. 以下の通り設定します。
-   - 名前: 任意（例: `sabanomisoni-server`）
-   - AMI: **Ubuntu Server 24.04 LTS**（無料利用枠対象）
-   - インスタンスタイプ: **t2.micro**（無料利用枠対象、リージョンによっては t3.micro の場合もあります）
-   - キーペア: 「**新しいキーペアの作成**」→ 名前を入力 → **「キーペアのダウンロード」** (.pem ファイル) ※**絶対に紛失しないように保管してください**
-   - ネットワーク設定: 「**セキュリティグループを作成**」を選び、以下を許可
-     - SSH (ポート 22) — 自分の IP からのみ
-     - HTTP (ポート 80) — どこからでも
-4. 「**インスタンスを起動**」をクリックします。
-5. EC2 の詳細ページから **「パブリック IPv4 アドレス」** をメモします。
-6. EC2 のセキュリティグループを RDS のインバウンドルールに追加します（ステップ 1 の 7 を実施）。
+1. AWS コンソールで **EC2** を開き、「**インスタンスを起動**」をクリックします。
+2. 以下の通り設定します。
+
+   | 項目 | 設定値 |
+   |------|--------|
+   | AMI | Ubuntu Server 24.04 LTS（無料利用枠対象）|
+   | インスタンスタイプ | t2.micro または t3.micro（無料利用枠対象）|
+   | キーペア | 新しいキーペアを作成 → .pem ファイルをダウンロード（紛失厳禁）|
+   | セキュリティグループ | SSH(22) を自分の IP から、HTTP(80) をどこからでも許可 |
+
+3. 「**インスタンスを起動**」をクリックし、**パブリック IPv4 アドレス**をメモします。
 
 ---
 
 ### ステップ 3 — EC2 への SSH 接続
 
-Windows の場合は PowerShell、Mac/Linux の場合はターミナルを開き、以下を実行します。
-
 ```bash
-# .pem ファイルのあるフォルダに移動してから実行 (Mac/Linux)
+# Mac/Linux
 chmod 400 your-key.pem
 ssh -i your-key.pem ubuntu@<EC2のパブリックIPアドレス>
 ```
 
-Windows (PowerShell) の場合:
-
 ```powershell
+# Windows (PowerShell)
 ssh -i C:\Users\あなたのユーザー名\Downloads\your-key.pem ubuntu@<EC2のパブリックIPアドレス>
 ```
 
-「Are you sure you want to continue connecting?」と聞かれたら **`yes`** と入力して Enter を押します。
+「Are you sure you want to continue connecting?」と聞かれたら **`yes`** を入力して Enter を押します。
 
 ---
 
 ### ステップ 4 — サーバーのセットアップ
 
-EC2 に接続したら、以下のコマンドを順番に実行します。
-
 ```bash
 # システムを最新化
 sudo apt update && sudo apt upgrade -y
 
-# Python 3.12、pip、仮想環境、Nginx、Git をインストール
+# Python 3.12・Nginx・Git をインストール
 sudo apt install -y python3.12 python3.12-venv python3-pip nginx git
 ```
 
@@ -176,11 +205,10 @@ sudo apt install -y python3.12 python3.12-venv python3-pip nginx git
 ### ステップ 5 — アプリケーションの配置
 
 ```bash
-# ホームディレクトリに移動
 cd /home/ubuntu
 
-# リポジトリをクローン（またはファイルをアップロード）
-git clone https://github.com/<あなたのユーザー名>/sabanomisoni.git
+# リポジトリをクローン（main ブランチを指定）
+git clone -b main https://github.com/<あなたのユーザー名>/sabanomisoni.git
 cd sabanomisoni
 
 # Python 仮想環境を作成・有効化
@@ -197,19 +225,25 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-nano .env   # テキストエディタで開く
+nano .env   # Ctrl+O で保存、Ctrl+X で終了
 ```
 
-以下の内容を書き換えます（`nano` では Ctrl+O で保存、Ctrl+X で終了）。
+以下を書き換えます。
 
 ```
-SECRET_KEY=（例: a1b2c3d4e5f6... のようなランダムな文字列）
+SECRET_KEY=<openssl rand -hex 32 の出力>
 DATABASE_URL=mysql+pymysql://dbadmin:RDSパスワード@RDSエンドポイント/saba_miso
-ADMIN_USERNAME=admin（任意のログイン名）
+ADMIN_USERNAME=admin
 ADMIN_PASSWORD=強力なパスワード
 ```
 
-> **ヒント**: `SECRET_KEY` にランダムな文字列を生成するには、別のターミナルで `openssl rand -hex 32` を実行し、その出力をそのまま貼り付けてください。
+> **ヒント**: `SECRET_KEY` の生成は `openssl rand -hex 32` を実行してください。
+
+セキュリティのため、`.env` のパーミッションを設定します。
+
+```bash
+chmod 600 /home/ubuntu/sabanomisoni/.env
+```
 
 ---
 
@@ -256,8 +290,7 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 sudo systemctl enable sabanomisoni
 sudo systemctl start sabanomisoni
-# 起動状態を確認
-sudo systemctl status sabanomisoni
+sudo systemctl status sabanomisoni   # 起動状態を確認
 ```
 
 ---
@@ -271,20 +304,16 @@ sudo nano /etc/nginx/sites-available/sabanomisoni
 以下の内容を貼り付けます。
 
 ```nginx
-# Nginxレベルのレートリミット設定（ブルートフォース・DoS対策）
+# Nginx レベルのレートリミット設定（DoS 対策）
 limit_req_zone $binary_remote_addr zone=sabanomisoni:10m rate=10r/s;
 
 server {
     listen 80;
-    server_name _;  # _ はすべてのホスト名を受け付けるという意味。独自ドメインがある場合は example.com のように変更
+    server_name _;  # 独自ドメインがある場合は example.com のように変更
 
-    # リクエストボディを1MBに制限する（大量データ送信対策）
     client_max_body_size 1m;
 
     location / {
-        # Nginxレベルのレートリミットを適用する（バースト10リクエストまで許容）
-        # ※ FlaskのレートリミットはエンドポイントごとにIPあたり10回/分に設定されており、
-        #    Nginxの制限（10req/s）はDDoS対策・大量アクセスの早期遮断を目的としています。
         limit_req zone=sabanomisoni burst=10 nodelay;
 
         proxy_pass http://unix:/run/sabanomisoni.sock;
@@ -300,7 +329,7 @@ server {
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/sabanomisoni /etc/nginx/sites-enabled/
-sudo nginx -t        # 設定ファイルの文法チェック
+sudo nginx -t
 sudo systemctl reload nginx
 ```
 
@@ -308,76 +337,31 @@ sudo systemctl reload nginx
 
 ---
 
-### ステップ 10 — `.env` ファイルのパーミッション設定
+### ステップ 10 — HTTPS 化（Let's Encrypt + Certbot）
 
-`.env` ファイルには秘密鍵・DBパスワード等の機密情報が含まれています。適切なパーミッションを設定してください。
-
-```bash
-# パーミッションを600（オーナーのみ読み書き可能）に設定する
-chmod 600 /home/ubuntu/sabanomisoni/.env
-
-# オーナーをアプリ実行ユーザーに設定する（ubuntu の部分は実際のユーザー名に合わせてください）
-chown ubuntu:ubuntu /home/ubuntu/sabanomisoni/.env
-```
-
-`.gitignore` に `.env` が含まれていることを確認します。
+> **注意**: 独自ドメインが必要です。EC2 のパブリック IP にドメインの A レコードを設定してから進めてください。
 
 ```bash
-grep '\.env' /home/ubuntu/sabanomisoni/.gitignore
-# .env と表示されれば設定済みです
-```
-
----
-
-### ステップ 11 — HTTPS 化（Let's Encrypt + Certbot）
-
-> **注意**: 独自ドメインが必要です。EC2 のパブリック IP に対してドメインの A レコードを設定してから進めてください。
-
-#### 11-1. Certbot のインストール
-
-```bash
+# Certbot のインストール
 sudo apt install -y certbot python3-certbot-nginx
-```
 
-#### 11-2. SSL 証明書の取得
-
-```bash
-# example.com を実際のドメイン名に置き換えてください
+# SSL 証明書の取得（example.com を実際のドメインに置き換えてください）
 sudo certbot --nginx -d example.com
 ```
 
-対話形式で進めます。メールアドレスの入力・利用規約への同意を求められます。
-成功すると Nginx の設定が自動的に更新され、HTTPS が有効になります。
+成功すると Nginx の設定が自動的に更新され、HTTPS が有効になります。証明書は自動更新されます（確認: `sudo certbot renew --dry-run`）。
 
-#### 11-3. 証明書の自動更新設定
-
-certbot をインストールすると `/etc/cron.d/certbot` が自動作成され、定期更新が設定されます。手動でテストするには以下を実行します。
-
-```bash
-sudo certbot renew --dry-run
-```
-
-`systemd timer` を使う場合は以下でも確認できます。
-
-```bash
-sudo systemctl status certbot.timer
-```
-
-#### 11-4. HTTPS 化後の環境変数設定
-
-HTTPS 化が完了したら `.env` を以下のように更新してください。
+HTTPS 化が完了したら `.env` を更新します。
 
 ```bash
 nano /home/ubuntu/sabanomisoni/.env
 ```
 
-以下の値を変更します。
-
 ```
-# Nginxがリバースプロキシとして X-Forwarded-For を付与するため true に設定する
+# Nginx がリバースプロキシとして X-Forwarded-For を付与するため true に設定する
 TRUST_PROXY_HEADERS=true
 
-# HTTPS化済みのためセッションCookieにSecureフラグを付与する
+# HTTPS 化済みのためセッション Cookie に Secure フラグを付与する
 HTTPS_ENABLED=true
 ```
 
@@ -387,16 +371,50 @@ HTTPS_ENABLED=true
 sudo systemctl restart sabanomisoni
 ```
 
-> **AWS EC2 + Nginx 構成で運用する場合は `TRUST_PROXY_HEADERS=true` に設定してください。**
-> これにより Nginx が付与する `X-Forwarded-For` ヘッダーが信頼され、クライアント IP が正しく取得されます。
-> プロキシを経由しない環境（直接インターネットに公開など）では `false` のままにしてください。
-
-> **本番環境（HTTPS 化済み）では `HTTPS_ENABLED=true` に設定してください。**
-> これによりセッション Cookie に `Secure` フラグが付与され、HTTPS 通信でのみ Cookie が送信されるようになります。
+> **`TRUST_PROXY_HEADERS=true`**: Nginx 経由の場合のみ設定してください。直接公開している環境では `false` のままにしてください。  
+> **`HTTPS_ENABLED=true`**: HTTPS 化済みの場合に設定してください。
 
 ---
 
-## オンプレミス環境でのデプロイ手順
+### アプリのアップデート（EC2）
+
+コードに更新があった場合は、以下の手順でアプリを最新バージョンに更新してください。
+
+```bash
+cd /home/ubuntu/sabanomisoni
+
+# リモートの最新情報を取得
+git fetch origin
+
+# アップデートしたいブランチを指定して切り替え・更新
+# （通常は main ブランチを使用します）
+git checkout main
+git pull origin main
+
+# 依存ライブラリを更新（新しいライブラリが追加されている場合に対応）
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# アプリを再起動
+sudo systemctl restart sabanomisoni
+
+# 再起動後の状態確認
+sudo systemctl status sabanomisoni
+```
+
+> **特定のバージョン（タグ）に切り替える場合**:
+> ```bash
+> git fetch origin --tags
+> git checkout tags/v1.2.0   # バージョン番号は適宜変更してください
+> pip install -r requirements.txt
+> sudo systemctl restart sabanomisoni
+> ```
+
+> **更新後にデータベーススキーマが変わった場合** は、`flask --app app.py init-db` を再実行してください。
+
+---
+
+## オンプレミス環境でのデプロイ手順（Windows Server + IIS）
 
 > 自社サーバーに直接インストールして運用する方法です。OS は **Windows Server 2019** を前提にしています。
 
@@ -411,10 +429,8 @@ sudo systemctl restart sabanomisoni
 ### ステップ 1 — Python 3.12 のインストール
 
 1. [Python 公式サイト](https://www.python.org/downloads/windows/) から **Python 3.12 の最新版 (Windows installer 64-bit)** をダウンロードします。
-2. インストーラーを実行し、以下の点に注意してインストールします。
-   - **「Add Python 3.12 to PATH」に必ずチェックを入れる**
-   - 「Install Now」をクリック
-3. インストール完了後、PowerShell（管理者権限）を開き、以下のコマンドで確認します。
+2. インストーラーを実行し、**「Add Python 3.12 to PATH」に必ずチェックを入れて**インストールします。
+3. インストール後、PowerShell（管理者権限）で確認します。
 
 ```powershell
 python --version
@@ -425,14 +441,9 @@ python --version
 
 ### ステップ 2 — MySQL のインストールとセットアップ
 
-1. [MySQL Community Server](https://dev.mysql.com/downloads/mysql/) から **MySQL 8.x の Windows 版インストーラー** をダウンロードします（mysql-installer-community-x.x.x.msi）。
-2. インストーラーを実行し、以下を選択します。
-   - セットアップタイプ: **Server only**（サーバーのみ）または **Developer Default**
-   - Config Type: **Development Computer**（開発用）または **Server Computer**
-   - Authentication Method: **Use Strong Password Encryption**
-   - Root パスワード: 強力なパスワードを設定（**必ずメモしてください**）
-3. インストール完了後、スタートメニューから **「MySQL 8.x Command Line Client」** を起動します。
-4. Root パスワードを入力してログインし、以下の SQL を実行します。
+1. [MySQL Community Server](https://dev.mysql.com/downloads/mysql/) から **MySQL 8.x の Windows 版インストーラー** をダウンロードします。
+2. インストーラーを実行し、Root パスワードを設定します（**必ずメモしてください**）。
+3. スタートメニューから **「MySQL 8.x Command Line Client」** を起動し、以下の SQL を実行します。
 
 ```sql
 CREATE DATABASE saba_miso CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -446,21 +457,20 @@ EXIT;
 
 ### ステップ 3 — Git のインストール
 
-1. [Git for Windows](https://git-scm.com/download/win) から **最新版の Git インストーラー** をダウンロードします。
-2. インストーラーを実行し、デフォルト設定のままインストールします。
+1. [Git for Windows](https://git-scm.com/download/win) から最新版をダウンロードし、デフォルト設定でインストールします。
 
 ---
 
 ### ステップ 4 — アプリケーションの配置
 
-PowerShell（管理者権限）を開き、以下のコマンドを順番に実行します。
+PowerShell（管理者権限）を開き、以下を順番に実行します。
 
 ```powershell
-# 作業ディレクトリに移動（例: C:\inetpub）
+# 作業ディレクトリに移動
 cd C:\inetpub
 
-# リポジトリをクローン
-git clone https://github.com/<あなたのユーザー名>/sabanomisoni.git
+# main ブランチを指定してリポジトリをクローン
+git clone -b main https://github.com/<あなたのユーザー名>/sabanomisoni.git
 cd sabanomisoni
 
 # Python 仮想環境を作成
@@ -473,7 +483,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-> **注意**: PowerShell の実行ポリシーでスクリプト実行がブロックされる場合、以下を実行してください。
+> **注意**: PowerShell の実行ポリシーでスクリプト実行がブロックされる場合は以下を実行してください。
 > ```powershell
 > Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 > ```
@@ -483,23 +493,20 @@ pip install -r requirements.txt
 ### ステップ 5 — 環境変数の設定
 
 ```powershell
-# .env ファイルを作成
 Copy-Item .env.example .env
-
-# メモ帳で編集
 notepad .env
 ```
 
 以下の内容を書き換えて保存します。
 
 ```
-SECRET_KEY=（例: a1b2c3d4e5f6... のようなランダムな文字列）
+SECRET_KEY=<ランダムな文字列>
 DATABASE_URL=mysql+pymysql://sabauser:あなたのパスワード@localhost/saba_miso
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=強力なパスワード
 ```
 
-> **ヒント**: `SECRET_KEY` にランダムな文字列を生成するには、PowerShell で以下を実行してください。
+> **ヒント**: `SECRET_KEY` の生成は PowerShell で以下を実行してください。
 > ```powershell
 > -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 64 | ForEach-Object {[char]$_})
 > ```
@@ -508,7 +515,7 @@ ADMIN_PASSWORD=強力なパスワード
 
 ### ステップ 6 — データベースの初期化
 
-仮想環境が有効化されている状態で、以下を実行します。
+仮想環境が有効化されている状態で実行します。
 
 ```powershell
 flask --app app.py init-db
@@ -518,43 +525,47 @@ flask --app app.py init-db
 
 ---
 
-### ステップ 7 — IIS のインストールと設定
+### ステップ 7 — IIS のインストールと HttpPlatformHandler の設定
 
 #### 7-1. IIS と必要な機能をインストール
 
-1. **サーバーマネージャー** を開きます。
-2. 「**役割と機能の追加**」をクリックします。
-3. 「**役割ベースまたは機能ベースのインストール**」を選択し、次へ進みます。
-4. 「**Web サーバー (IIS)**」にチェックを入れ、必要な機能を追加します。
-5. 「**アプリケーション開発**」から以下にチェックを入れます。
+1. **サーバーマネージャー** を開き、「**役割と機能の追加**」をクリックします。
+2. 「**Web サーバー (IIS)**」を選択し、「**アプリケーション開発**」から以下にチェックを入れます。
    - CGI
    - WebSocket プロトコル
-6. インストールを完了します。
+3. インストールを完了します。
 
 #### 7-2. HttpPlatformHandler モジュールのインストール
 
 1. [HttpPlatformHandler](https://www.iis.net/downloads/microsoft/httpplatformhandler) のページから **最新版** をダウンロードしてインストールします。
+
    > **注意**: 旧バージョン（v1.2 以前）には `processPath` に指定した実行ファイルを直接起動せず `PATH` を経由して Python を探すバグがある場合があります。最新版の使用を強く推奨します。
+
 2. サーバーを再起動します。
 
 ---
 
 ### ステップ 8 — IIS サイトの作成と設定
 
-1. **IIS マネージャー** を開きます（スタートメニューから「inetmgr」で検索）。
-2. 左のツリーから「**サイト**」を右クリック → 「**Web サイトの追加**」を選択します。
-3. 以下のように設定します。
-   - サイト名: `sabanomisoni`
-   - 物理パス: `C:\inetpub\sabanomisoni`
-   - バインド: HTTP、ポート 80、ホスト名は空欄（すべて受け付ける）
-4. 「OK」をクリックしてサイトを作成します。
-5. 作成したサイトを選択し、「**ハンドラー マッピング**」を開きます。
-6. 右側の「**モジュール マップの追加**」をクリックし、以下を設定します。
-   - 要求パス: `*`
-   - モジュール: `HttpPlatformHandler`
-   - 実行可能ファイル: （空欄のまま）
-   - 名前: `Python Application`
-7. サイトのルートに `web.config` ファイルを作成します。リポジトリに `web.config` が含まれているため、Git クローン済みであればそのまま使用できます。手動で作成・上書きする場合は以下を実行してください。
+1. **IIS マネージャー**（`inetmgr`）を開きます。
+2. 「**サイト**」を右クリック → 「**Web サイトの追加**」を選択し、以下を設定します。
+
+   | 項目 | 設定値 |
+   |------|--------|
+   | サイト名 | `sabanomisoni` |
+   | 物理パス | `C:\inetpub\sabanomisoni` |
+   | バインド | HTTP、ポート 80、ホスト名は空欄 |
+
+3. 作成したサイトの「**ハンドラー マッピング**」→「**モジュール マップの追加**」で以下を設定します。
+
+   | 項目 | 設定値 |
+   |------|--------|
+   | 要求パス | `*` |
+   | モジュール | `HttpPlatformHandler` |
+   | 実行可能ファイル | （空欄のまま）|
+   | 名前 | `Python Application` |
+
+4. リポジトリに `web.config` が含まれているため、Git クローン済みであればそのまま使用できます。手動で作成・上書きする場合は以下を実行してください。
 
 ```powershell
 notepad C:\inetpub\sabanomisoni\web.config
@@ -588,21 +599,19 @@ notepad C:\inetpub\sabanomisoni\web.config
 </configuration>
 ```
 
-> **ポイント**: `processPath` に `waitress-serve.exe` を直接指定することで、Python Launcher (`py.exe`) や `PATH` 経由で別の Python が起動されてしまう問題を回避しています。アプリの環境変数（`SECRET_KEY`、`DATABASE_URL` など）はアプリケーションディレクトリの `.env` ファイルから読み込まれます（ステップ 5 で作成済み）。IIS を起動する前に `.env` ファイルが存在することを確認してください。
+> **ポイント**: `processPath` に `waitress-serve.exe` を直接指定することで、Python Launcher（`py.exe`）や `PATH` 経由で別の Python が起動されてしまう問題を回避しています。アプリの環境変数（`SECRET_KEY`・`DATABASE_URL` など）はアプリケーションディレクトリの `.env` ファイルから読み込まれます（ステップ 5 で作成済み）。IIS を起動する前に `.env` ファイルが存在することを確認してください。
 
-8. ログ出力用のフォルダを作成します。
+5. ログ出力用フォルダを作成します。
 
 ```powershell
 New-Item -ItemType Directory -Path C:\inetpub\sabanomisoni\logs -Force
 ```
 
-9. IIS マネージャーでサイトを再起動します（右クリック → 停止 → 開始）。
+6. IIS マネージャーでサイトを再起動します（右クリック → 停止 → 開始）。
 
 ---
 
 ### ステップ 9 — ファイアウォールの設定
-
-PowerShell（管理者権限）で以下を実行し、HTTP (ポート 80) を外部に公開します。
 
 ```powershell
 New-NetFirewallRule -DisplayName "Allow HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
@@ -616,17 +625,63 @@ New-NetFirewallRule -DisplayName "Allow HTTP" -Direction Inbound -Protocol TCP -
 
 ---
 
-### トラブルシューティング
+### アプリのアップデート（Windows / IIS）
 
-- **503 エラーが出る場合**: `C:\inetpub\sabanomisoni\logs\stdout.log` を確認してエラー内容を確認してください。
-- **仮想環境のパスエラー**: `web.config` 内の `waitress-serve.exe` のパスが正しいか確認してください。`%APPL_PHYSICAL_PATH%` が IIS のアプリケーション物理パスに展開されているか確認するには、IIS マネージャーでサイトの「基本設定」→「物理パス」を確認してください。
-- **データベース接続エラー**: `.env` ファイルの `DATABASE_URL` が正しいか、MySQL サービスが起動しているか確認してください。
+コードに更新があった場合は、以下の手順でアプリを最新バージョンに更新してください。
+
+PowerShell（管理者権限）を開き、以下を実行します。
+
+```powershell
+cd C:\inetpub\sabanomisoni
+
+# リモートの最新情報を取得
+git fetch origin
+
+# アップデートしたいブランチを指定して切り替え・更新
+# （通常は main ブランチを使用します）
+git checkout main
+git pull origin main
+
+# 依存ライブラリを更新
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+更新後、IIS マネージャーでサイトを再起動します（右クリック → 停止 → 開始）。または PowerShell から実行します。
+
+```powershell
+# IIS サイトを再起動
+Stop-Website -Name "sabanomisoni"
+Start-Website -Name "sabanomisoni"
+```
+
+> **特定のバージョン（タグ）に切り替える場合**:
+> ```powershell
+> git fetch origin --tags
+> git checkout tags/v1.2.0   # バージョン番号は適宜変更してください
+> pip install -r requirements.txt
+> Stop-Website -Name "sabanomisoni"; Start-Website -Name "sabanomisoni"
+> ```
+
+> **更新後にデータベーススキーマが変わった場合** は、仮想環境を有効化した状態で `flask --app app.py init-db` を再実行してください。
+
+---
+
+### トラブルシューティング（IIS）
+
+| 症状 | 確認・対処方法 |
+|------|--------------|
+| 503 エラーが出る | `C:\inetpub\sabanomisoni\logs\stdout.log` を確認してください |
+| `waitress-serve.exe` が見つからない | 仮想環境を有効化した状態で `pip install waitress` を実行してください |
+| `%APPL_PHYSICAL_PATH%` が展開されない | IIS マネージャーでサイトの「基本設定」→「物理パス」を確認してください |
+| 起動時に別の Python が使われる | HttpPlatformHandler を最新版に更新してください |
+| データベース接続エラー | `.env` の `DATABASE_URL` と MySQL サービスの起動状態を確認してください |
 
 ---
 
 ### 共通の注意事項
 
-- **IP 記録と BAN 判定**を正しく動作させるため、IIS の設定で `X-Forwarded-For` ヘッダーを渡すよう設定しています（上記 `web.config` に含まれています）。
 - 本番運用では HTTPS (SSL/TLS) の設定を強く推奨します。IIS では証明書をインポートし、バインドで HTTPS (ポート 443) を設定してください。
 - `.env` ファイルには秘密情報が含まれています。Git にコミットしないよう注意してください（`.gitignore` に設定済み）。
-- Windows Server では定期的な Windows Update の実行と、セキュリティパッチの適用を忘れずに行ってください。
+- Windows Server では定期的な Windows Update の実行とセキュリティパッチの適用を行ってください。
+
