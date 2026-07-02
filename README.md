@@ -63,7 +63,7 @@ python -m unittest discover -s tests
 
 ## データベーススキーマ
 
-- MySQL 向けスキーマ: `/home/runner/work/sabanomisoni/sabanomisoni/database/schema.sql`
+- MySQL 向けスキーマ: `database/schema.sql`
 - アプリケーションは `DATABASE_URL` で指定した DB に対して SQLAlchemy を利用します
 
 ## 画面 / ルート

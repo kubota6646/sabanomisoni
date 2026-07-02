@@ -1,7 +1,8 @@
 from functools import wraps
 
-from flask import abort, flash, redirect, request, session, url_for
+from flask import abort, flash, g, redirect, request, session, url_for
 
+from .extensions import db
 from .models import BannedIp, NgWord
 
 
@@ -26,8 +27,13 @@ def validate_post_fields(title=None, body="", edit_key=""):
 
 def contains_ng_word(text):
     normalized = text.lower()
-    for ng_word in NgWord.query.order_by(NgWord.word.asc()).all():
-        if ng_word.word.lower() in normalized:
+    if "ng_words" not in g:
+        g.ng_words = db.session.execute(
+            db.select(NgWord.word).order_by(NgWord.word.asc())
+        ).scalars().all()
+
+    for ng_word in g.ng_words:
+        if ng_word.lower() in normalized:
             return True
     return False
 
