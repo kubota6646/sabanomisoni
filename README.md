@@ -533,7 +533,8 @@ flask --app app.py init-db
 
 #### 7-2. HttpPlatformHandler モジュールのインストール
 
-1. [HttpPlatformHandler v1.2](https://www.iis.net/downloads/microsoft/httpplatformhandler) をダウンロードしてインストールします。
+1. [HttpPlatformHandler](https://www.iis.net/downloads/microsoft/httpplatformhandler) のページから **最新版** をダウンロードしてインストールします。
+   > **注意**: 旧バージョン（v1.2 以前）には `processPath` に指定した実行ファイルを直接起動せず `PATH` を経由して Python を探すバグがある場合があります。最新版の使用を強く推奨します。
 2. サーバーを再起動します。
 
 ---
@@ -553,7 +554,7 @@ flask --app app.py init-db
    - モジュール: `HttpPlatformHandler`
    - 実行可能ファイル: （空欄のまま）
    - 名前: `Python Application`
-7. サイトのルートに `web.config` ファイルを作成します。
+7. サイトのルートに `web.config` ファイルを作成します。リポジトリに `web.config` が含まれているため、Git クローン済みであればそのまま使用できます。手動で作成・上書きする場合は以下を実行してください。
 
 ```powershell
 notepad C:\inetpub\sabanomisoni\web.config
@@ -568,19 +569,26 @@ notepad C:\inetpub\sabanomisoni\web.config
     <handlers>
       <add name="httpPlatformHandler" path="*" verb="*" modules="httpPlatformHandler" resourceType="Unspecified" />
     </handlers>
-    <httpPlatform processPath="C:\inetpub\sabanomisoni\.venv\Scripts\python.exe"
-                  arguments="-m gunicorn --bind 127.0.0.1:%HTTP_PLATFORM_PORT% --workers 2 app:app"
+    <!--
+      processPath に waitress-serve.exe を直接指定することで、Python Launcher (py.exe) や
+      PATH 解決を完全に回避し、仮想環境の Python だけを使って waitress を起動します。
+      %APPL_PHYSICAL_PATH% は IIS がアプリケーションの物理パスに展開します。
+    -->
+    <httpPlatform processPath="%APPL_PHYSICAL_PATH%\.venv\Scripts\waitress-serve.exe"
+                  arguments="--port=%HTTP_PLATFORM_PORT% --host=127.0.0.1 app:app"
                   stdoutLogEnabled="true"
-                  stdoutLogFile="C:\inetpub\sabanomisoni\logs\stdout.log"
+                  stdoutLogFile="%APPL_PHYSICAL_PATH%\logs\stdout.log"
                   startupTimeLimit="60"
                   requestTimeout="00:04:00">
       <environmentVariables>
-        <environmentVariable name="PYTHONPATH" value="C:\inetpub\sabanomisoni" />
+        <environmentVariable name="PYTHONPATH" value="%APPL_PHYSICAL_PATH%" />
       </environmentVariables>
     </httpPlatform>
   </system.webServer>
 </configuration>
 ```
+
+> **ポイント**: `processPath` に `waitress-serve.exe` を直接指定することで、Python Launcher (`py.exe`) や `PATH` 経由で別の Python が起動されてしまう問題を回避しています。アプリの環境変数（`SECRET_KEY`、`DATABASE_URL` など）はアプリケーションディレクトリの `.env` ファイルから読み込まれます（ステップ 5 で作成済み）。IIS を起動する前に `.env` ファイルが存在することを確認してください。
 
 8. ログ出力用のフォルダを作成します。
 
@@ -611,7 +619,7 @@ New-NetFirewallRule -DisplayName "Allow HTTP" -Direction Inbound -Protocol TCP -
 ### トラブルシューティング
 
 - **503 エラーが出る場合**: `C:\inetpub\sabanomisoni\logs\stdout.log` を確認してエラー内容を確認してください。
-- **仮想環境のパスエラー**: `web.config` 内の Python.exe と gunicorn のパスが正しいか確認してください。
+- **仮想環境のパスエラー**: `web.config` 内の `waitress-serve.exe` のパスが正しいか確認してください。`%APPL_PHYSICAL_PATH%` が IIS のアプリケーション物理パスに展開されているか確認するには、IIS マネージャーでサイトの「基本設定」→「物理パス」を確認してください。
 - **データベース接続エラー**: `.env` ファイルの `DATABASE_URL` が正しいか、MySQL サービスが起動しているか確認してください。
 
 ---
