@@ -21,6 +21,7 @@
   <section class="panel">
     <h2>新規スレッド作成</h2>
     <form method="post" action="{{ url_for('board.create_thread') }}" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>タイトル <input type="text" name="title" maxlength="255" required></label>
       <label>名前（任意） <input type="text" name="author_name" maxlength="100"></label>
       <label>本文 <textarea name="body" rows="6" required></textarea></label>

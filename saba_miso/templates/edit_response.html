@@ -4,6 +4,7 @@
   <section class="panel">
     <h2>レス編集</h2>
     <form method="post" action="{{ url_for('board.edit_response', response_id=response.id) }}" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>名前（任意） <input type="text" name="author_name" maxlength="100" value="{{ response.author_name }}"></label>
       <label>本文 <textarea name="body" rows="6" required>{{ response.body }}</textarea></label>
       <label>編集キー <input type="password" name="edit_key" required></label>

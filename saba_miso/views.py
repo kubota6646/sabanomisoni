@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
-from .extensions import db
+from .extensions import db, limiter
 from .models import Response, Thread
 from .utils import block_banned_ip, get_client_ip, validate_post_fields
 
@@ -19,6 +19,8 @@ def index():
 
 
 @bp.post("/threads")
+@limiter.limit("10 per minute")
+@limiter.limit("50 per hour")
 def create_thread():
     error = validate_post_fields(
         title=request.form.get("title", ""),
@@ -49,6 +51,8 @@ def thread_detail(thread_id):
 
 
 @bp.post("/threads/<int:thread_id>/responses")
+@limiter.limit("10 per minute")
+@limiter.limit("50 per hour")
 def create_response(thread_id):
     thread = db.get_or_404(Thread, thread_id)
     error = validate_post_fields(

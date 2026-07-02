@@ -1,3 +1,5 @@
+import os
+from datetime import UTC, datetime
 from functools import wraps
 
 from flask import abort, flash, g, redirect, request, session, url_for
@@ -7,9 +9,17 @@ from .models import BannedIp, NgWord
 
 
 def get_client_ip():
-    forwarded_for = request.headers.get("X-Forwarded-For", "")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
+    """クライアントIPアドレスを返す。
+
+    TRUST_PROXY_HEADERS=true の場合のみ X-Forwarded-For ヘッダーを信頼する。
+    false（デフォルト）の場合は request.remote_addr を直接使用し、
+    ヘッダー偽造によるBAN回避・レート制限回避を防ぐ。
+    """
+    trust_proxy = os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true"
+    if trust_proxy:
+        forwarded_for = request.headers.get("X-Forwarded-For", "")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
     return request.remote_addr or "0.0.0.0"
 
 
@@ -44,6 +54,8 @@ def admin_required(view):
         if not session.get("admin_user_id"):
             flash("管理者ログインが必要です。", "error")
             return redirect(url_for("admin.login"))
+        # 最終アクセス時刻を更新する（セッション監査用）
+        session["last_active"] = datetime.now(UTC).replace(tzinfo=None).isoformat()
         return view(*args, **kwargs)
 
     return wrapped_view

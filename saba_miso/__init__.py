@@ -1,15 +1,29 @@
 import os
+from datetime import timedelta
 
 from dotenv import load_dotenv
 from flask import Flask
+from flask_talisman import Talisman
+from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-from .extensions import db
+from .extensions import db, limiter
+
+
+# CSRF保護インスタンス（application factoryパターンのため、init_app()で初期化する）
+csrf = CSRFProtect()
 
 
 def create_app(test_config=None):
     load_dotenv()
 
     app = Flask(__name__, instance_relative_config=True)
+
+    # 環境変数でプロキシ信頼・HTTPS有効化・セッション時間を制御する
+    trust_proxy = os.environ.get("TRUST_PROXY_HEADERS", "false").lower() == "true"
+    https_enabled = os.environ.get("HTTPS_ENABLED", "false").lower() == "true"
+    admin_session_hours = int(os.environ.get("ADMIN_SESSION_HOURS", "2"))
+
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-key"),
         SQLALCHEMY_DATABASE_URI=os.environ.get(
@@ -18,17 +32,69 @@ def create_app(test_config=None):
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        # HTTPS環境ではCookieをSecureフラグ付きで送信する（HTTPS_ENABLED=trueで有効）
+        SESSION_COOKIE_SECURE=https_enabled,
+        # CSRFトークン保護を有効化する
+        WTF_CSRF_ENABLED=True,
+        WTF_CSRF_SECRET_KEY=os.environ.get(
+            "WTF_CSRF_SECRET_KEY", os.environ.get("SECRET_KEY", "dev-secret-key")
+        ),
+        # 管理者セッションタイムアウト（デフォルト2時間）
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=admin_session_hours),
+        # リクエストボディの最大サイズを1MBに制限する（大量データ送信攻撃対策）
+        MAX_CONTENT_LENGTH=1 * 1024 * 1024,
     )
 
     if test_config:
         app.config.update(test_config)
 
+    # テスト時はCSRFトークン検証とレート制限を無効化する
+    if app.config.get("TESTING"):
+        app.config["WTF_CSRF_ENABLED"] = False
+        app.config["RATELIMIT_ENABLED"] = False
+
+    # X-Forwarded-Forを信頼できる場合のみProxyFixを適用する（TRUST_PROXY_HEADERS=trueで有効）
+    # Nginx等のリバースプロキシ経由の場合に使用する
+    if trust_proxy:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
     db.init_app(app)
+    csrf.init_app(app)
+    limiter.init_app(app)
+
+    # セキュリティヘッダーを設定する（クリックジャッキング・MIMEスニッフィング等の対策）
+    csp = {
+        "default-src": "'self'",
+        "style-src": ["'self'", "'unsafe-inline'"],  # 既存インラインCSSを許可
+        "script-src": "'self'",
+        "img-src": "'self' data:",
+    }
+    Talisman(
+        app,
+        force_https=False,           # HTTPS強制はNginx側で行う
+        strict_transport_security=False,
+        content_security_policy=csp,
+        x_content_type_options=True,
+        frame_options="DENY",
+        referrer_policy="strict-origin-when-cross-origin",
+        # Flask側でセッションCookieのセキュリティ設定を管理する
+        session_cookie_secure=False,
+    )
 
     from . import admin, views
 
     app.register_blueprint(views.bp)
     app.register_blueprint(admin.bp)
+
+    # リクエストボディが1MBを超えた場合のエラーハンドラ
+    @app.errorhandler(413)
+    def request_too_large(e):
+        return "送信データが大きすぎます（上限1MB）。", 413
+
+    # レート制限超過時のエラーハンドラ
+    @app.errorhandler(429)
+    def ratelimit_exceeded(e):
+        return "投稿が多すぎます。しばらくしてからお試しください。", 429
 
     @app.cli.command("init-db")
     def init_db_command():

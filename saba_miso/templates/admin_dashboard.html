@@ -6,6 +6,7 @@
       <h2>管理者画面</h2>
       <div class="inline-actions">
         <form method="post" action="{{ url_for('admin.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit">ログアウト</button>
         </form>
       </div>
@@ -16,6 +17,7 @@
     <div>
       <h3>NGワード管理</h3>
       <form method="post" action="{{ url_for('admin.add_ng_word') }}" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label>NGワード <input type="text" name="word" maxlength="255" required></label>
         <button type="submit">追加</button>
       </form>
@@ -24,6 +26,7 @@
           <li>
             <span>{{ ng_word.word }}</span>
             <form method="post" action="{{ url_for('admin.delete_ng_word', ng_word_id=ng_word.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit">削除</button>
             </form>
           </li>
@@ -35,6 +38,7 @@
     <div>
       <h3>BANリスト管理</h3>
       <form method="post" action="{{ url_for('admin.add_ban') }}" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label>IPアドレス <input type="text" name="ip_address" maxlength="45" required></label>
         <label>理由 <textarea name="reason" rows="3" required></textarea></label>
         <button type="submit">BANする</button>
@@ -47,6 +51,7 @@
               <div>{{ ban.reason }}</div>
             </div>
             <form method="post" action="{{ url_for('admin.delete_ban', ban_id=ban.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit">解除</button>
             </form>
           </li>
@@ -61,6 +66,7 @@
     <div class="space-between">
       <h3>全スレッド</h3>
       <form method="post" action="{{ url_for('admin.delete_all_threads') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit">全スレッド削除</button>
       </form>
     </div>
@@ -72,6 +78,7 @@
             <div>投稿者: {{ thread.author_name }} / IP: {{ thread.ip_address }} / {{ thread.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
           </div>
           <form method="post" action="{{ url_for('admin.delete_thread', thread_id=thread.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit">削除</button>
           </form>
         </li>
@@ -85,6 +92,7 @@
     <div class="space-between">
       <h3>全レス</h3>
       <form method="post" action="{{ url_for('admin.delete_all_responses') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit">全レス削除</button>
       </form>
     </div>
@@ -97,6 +105,7 @@
             <div class="post-body">{{ response.body }}</div>
           </div>
           <form method="post" action="{{ url_for('admin.delete_response', response_id=response.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit">削除</button>
           </form>
         </li>
@@ -104,5 +113,31 @@
         <li>レスはありません。</li>
       {% endfor %}
     </ul>
+  </section>
+
+  <section class="panel">
+    <h3>ログイン履歴（直近20件）</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>日時</th>
+          <th>ユーザー名</th>
+          <th>IPアドレス</th>
+          <th>結果</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in login_logs %}
+          <tr>
+            <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>{{ log.username }}</td>
+            <td>{{ log.ip_address }}</td>
+            <td>{{ '成功' if log.success else '失敗' }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4">ログインの記録がありません。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </section>
 {% endblock %}

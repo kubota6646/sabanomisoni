@@ -264,11 +264,20 @@ sudo nano /etc/nginx/sites-available/sabanomisoni
 以下の内容を貼り付けます。
 
 ```nginx
+# Nginxレベルのレートリミット設定（ブルートフォース・DoS対策）
+limit_req_zone $binary_remote_addr zone=sabanomisoni:10m rate=10r/s;
+
 server {
     listen 80;
     server_name _;  # _ はすべてのホスト名を受け付けるという意味。独自ドメインがある場合は example.com のように変更
 
+    # リクエストボディを1MBに制限する（大量データ送信対策）
+    client_max_body_size 1m;
+
     location / {
+        # Nginxレベルのレートリミットを適用する（バースト10リクエストまで許容）
+        limit_req zone=sabanomisoni burst=10 nodelay;
+
         proxy_pass http://unix:/run/sabanomisoni.sock;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -287,6 +296,94 @@ sudo systemctl reload nginx
 ```
 
 ブラウザで `http://<EC2のパブリックIPアドレス>` にアクセスして掲示板が表示されれば完了です。
+
+---
+
+### ステップ 10 — `.env` ファイルのパーミッション設定
+
+`.env` ファイルには秘密鍵・DBパスワード等の機密情報が含まれています。適切なパーミッションを設定してください。
+
+```bash
+# パーミッションを600（オーナーのみ読み書き可能）に設定する
+chmod 600 /home/ubuntu/sabanomisoni/.env
+
+# オーナーをアプリ実行ユーザーに設定する（ubuntu の部分は実際のユーザー名に合わせてください）
+chown ubuntu:ubuntu /home/ubuntu/sabanomisoni/.env
+```
+
+`.gitignore` に `.env` が含まれていることを確認します。
+
+```bash
+grep '\.env' /home/ubuntu/sabanomisoni/.gitignore
+# .env と表示されれば設定済みです
+```
+
+---
+
+### ステップ 11 — HTTPS 化（Let's Encrypt + Certbot）
+
+> **注意**: 独自ドメインが必要です。EC2 のパブリック IP に対してドメインの A レコードを設定してから進めてください。
+
+#### 11-1. Certbot のインストール
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+```
+
+#### 11-2. SSL 証明書の取得
+
+```bash
+# example.com を実際のドメイン名に置き換えてください
+sudo certbot --nginx -d example.com
+```
+
+対話形式で進めます。メールアドレスの入力・利用規約への同意を求められます。
+成功すると Nginx の設定が自動的に更新され、HTTPS が有効になります。
+
+#### 11-3. 証明書の自動更新設定
+
+certbot をインストールすると `/etc/cron.d/certbot` が自動作成され、定期更新が設定されます。手動でテストするには以下を実行します。
+
+```bash
+sudo certbot renew --dry-run
+```
+
+`systemd timer` を使う場合は以下でも確認できます。
+
+```bash
+sudo systemctl status certbot.timer
+```
+
+#### 11-4. HTTPS 化後の環境変数設定
+
+HTTPS 化が完了したら `.env` を以下のように更新してください。
+
+```bash
+nano /home/ubuntu/sabanomisoni/.env
+```
+
+以下の値を変更します。
+
+```
+# Nginxがリバースプロキシとして X-Forwarded-For を付与するため true に設定する
+TRUST_PROXY_HEADERS=true
+
+# HTTPS化済みのためセッションCookieにSecureフラグを付与する
+HTTPS_ENABLED=true
+```
+
+変更後はアプリを再起動します。
+
+```bash
+sudo systemctl restart sabanomisoni
+```
+
+> **AWS EC2 + Nginx 構成で運用する場合は `TRUST_PROXY_HEADERS=true` に設定してください。**
+> これにより Nginx が付与する `X-Forwarded-For` ヘッダーが信頼され、クライアント IP が正しく取得されます。
+> プロキシを経由しない環境（直接インターネットに公開など）では `false` のままにしてください。
+
+> **本番環境（HTTPS 化済み）では `HTTPS_ENABLED=true` に設定してください。**
+> これによりセッション Cookie に `Secure` フラグが付与され、HTTPS 通信でのみ Cookie が送信されるようになります。
 
 ---
 

@@ -112,3 +112,15 @@ class BannedIp(db.Model):
     ip_address = db.Column(db.String(45), nullable=False, unique=True)
     reason = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=current_utc_time, nullable=False)
+
+
+class AdminLoginLog(db.Model):
+    """管理者ログイン履歴。ブルートフォース攻撃の検知・監査に使用する。"""
+
+    __tablename__ = "admin_login_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), nullable=False)
+    ip_address = db.Column(db.String(45), nullable=False)
+    success = db.Column(db.Boolean, nullable=False)
+    created_at = db.Column(db.DateTime, default=current_utc_time, nullable=False)

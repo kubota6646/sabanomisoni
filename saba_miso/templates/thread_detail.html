@@ -9,6 +9,7 @@
       <a href="{{ url_for('board.edit_thread_form', thread_id=thread.id) }}">編集</a>
     </div>
     <form method="post" action="{{ url_for('board.delete_thread', thread_id=thread.id) }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>スレッド削除キー <input type="password" name="edit_key" required></label>
       <button type="submit">スレッド削除</button>
     </form>
@@ -26,6 +27,7 @@
               <a href="{{ url_for('board.edit_response_form', response_id=response.id) }}">編集</a>
             </div>
             <form method="post" action="{{ url_for('board.delete_response', response_id=response.id) }}" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <label>レス削除キー <input type="password" name="edit_key" required></label>
               <button type="submit">レス削除</button>
             </form>
@@ -40,6 +42,7 @@
   <section class="panel">
     <h2>レス投稿</h2>
     <form method="post" action="{{ url_for('board.create_response', thread_id=thread.id) }}" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>名前（任意） <input type="text" name="author_name" maxlength="100"></label>
       <label>本文 <textarea name="body" rows="5" required></textarea></label>
       <label>編集キー <input type="password" name="edit_key" required></label>
