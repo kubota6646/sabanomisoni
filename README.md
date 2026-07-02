@@ -104,7 +104,7 @@ python -m unittest discover -s tests
    - エンジンのタイプ: **MySQL**
    - テンプレート: **無料利用枠**（12 か月間無料）
    - DB インスタンス識別子: 任意（例: `saba-miso-db`）
-   - マスターユーザー名: 任意（例: `admin`）※**必ずメモしてください**
+   - マスターユーザー名: 任意（例: `dbadmin`）※**必ずメモしてください**（アプリの管理者ユーザーとは別物です）
    - マスターパスワード: 英数字記号を含む強力なパスワード ※**必ずメモしてください**
    - パブリックアクセス: **「なし」**（EC2 経由でのみ接続するため）
    - 最初のデータベース名（追加設定の中）: `saba_miso`
@@ -121,7 +121,7 @@ python -m unittest discover -s tests
 3. 以下の通り設定します。
    - 名前: 任意（例: `sabanomisoni-server`）
    - AMI: **Ubuntu Server 24.04 LTS**（無料利用枠対象）
-   - インスタンスタイプ: **t3.micro**（無料利用枠対象）
+   - インスタンスタイプ: **t2.micro**（無料利用枠対象、リージョンによっては t3.micro の場合もあります）
    - キーペア: 「**新しいキーペアの作成**」→ 名前を入力 → **「キーペアのダウンロード」** (.pem ファイル) ※**絶対に紛失しないように保管してください**
    - ネットワーク設定: 「**セキュリティグループを作成**」を選び、以下を許可
      - SSH (ポート 22) — 自分の IP からのみ
@@ -196,13 +196,13 @@ nano .env   # テキストエディタで開く
 以下の内容を書き換えます（`nano` では Ctrl+O で保存、Ctrl+X で終了）。
 
 ```
-SECRET_KEY=ランダムな長い文字列（例: openssl rand -hex 32 の出力）
-DATABASE_URL=mysql+pymysql://admin:RDSパスワード@RDSエンドポイント/saba_miso
+SECRET_KEY=（例: a1b2c3d4e5f6... のようなランダムな文字列）
+DATABASE_URL=mysql+pymysql://dbadmin:RDSパスワード@RDSエンドポイント/saba_miso
 ADMIN_USERNAME=admin（任意のログイン名）
 ADMIN_PASSWORD=強力なパスワード
 ```
 
-> **ヒント**: `SECRET_KEY` にランダムな文字列を生成するには `openssl rand -hex 32` を実行してください。
+> **ヒント**: `SECRET_KEY` にランダムな文字列を生成するには、別のターミナルで `openssl rand -hex 32` を実行し、その出力をそのまま貼り付けてください。
 
 ---
 
@@ -266,7 +266,7 @@ sudo nano /etc/nginx/sites-available/sabanomisoni
 ```nginx
 server {
     listen 80;
-    server_name _;  # 独自ドメインがある場合はドメイン名に変更
+    server_name _;  # _ はすべてのホスト名を受け付けるという意味。独自ドメインがある場合は example.com のように変更
 
     location / {
         proxy_pass http://unix:/run/sabanomisoni.sock;
@@ -411,7 +411,7 @@ sudo nano /etc/nginx/sites-available/sabanomisoni
 ```nginx
 server {
     listen 80;
-    server_name _;  # 独自ドメインがある場合はドメイン名に変更
+    server_name _;  # _ はすべてのホスト名を受け付けるという意味。独自ドメインがある場合は example.com のように変更
 
     location / {
         proxy_pass http://unix:/run/sabanomisoni.sock;
