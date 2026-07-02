@@ -292,31 +292,41 @@ sudo systemctl reload nginx
 
 ## オンプレミス環境でのデプロイ手順
 
-> 自分のパソコンや自社サーバーに直接インストールして運用する方法です。OS は **Ubuntu 24.04 LTS** を前提にしています。
+> 自社サーバーに直接インストールして運用する方法です。OS は **Windows Server 2019** を前提にしています。
 
-### ステップ 1 — 必要なソフトウェアのインストール
+### 前提
 
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3.12 python3.12-venv python3-pip nginx git mysql-server
+- Windows Server 2019 がインストールされていること
+- 管理者権限でログインできること
+- インターネット接続が可能であること
+
+---
+
+### ステップ 1 — Python 3.12 のインストール
+
+1. [Python 公式サイト](https://www.python.org/downloads/windows/) から **Python 3.12 の最新版 (Windows installer 64-bit)** をダウンロードします。
+2. インストーラーを実行し、以下の点に注意してインストールします。
+   - **「Add Python 3.12 to PATH」に必ずチェックを入れる**
+   - 「Install Now」をクリック
+3. インストール完了後、PowerShell（管理者権限）を開き、以下のコマンドで確認します。
+
+```powershell
+python --version
+# Python 3.12.x と表示されれば成功
 ```
 
 ---
 
-### ステップ 2 — MySQL のセットアップ
+### ステップ 2 — MySQL のインストールとセットアップ
 
-```bash
-# MySQL を起動・自動起動を有効化
-sudo systemctl enable --now mysql
-
-# MySQL の初期設定（ルートパスワードなどを対話形式で設定）
-sudo mysql_secure_installation
-
-# MySQL にログイン
-sudo mysql -u root -p
-```
-
-MySQL のプロンプト内で以下を実行します。
+1. [MySQL Community Server](https://dev.mysql.com/downloads/mysql/) から **MySQL 8.x の Windows 版インストーラー** をダウンロードします（mysql-installer-community-x.x.x.msi）。
+2. インストーラーを実行し、以下を選択します。
+   - セットアップタイプ: **Server only**（サーバーのみ）または **Developer Default**
+   - Config Type: **Development Computer**（開発用）または **Server Computer**
+   - Authentication Method: **Use Strong Password Encryption**
+   - Root パスワード: 強力なパスワードを設定（**必ずメモしてください**）
+3. インストール完了後、スタートメニューから **「MySQL 8.x Command Line Client」** を起動します。
+4. Root パスワードを入力してログインし、以下の SQL を実行します。
 
 ```sql
 CREATE DATABASE saba_miso CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -328,124 +338,181 @@ EXIT;
 
 ---
 
-### ステップ 3 — アプリケーションの配置
+### ステップ 3 — Git のインストール
 
-```bash
-cd /home/あなたのユーザー名
-git clone https://github.com/<あなたのユーザー名>/sabanomisoni.git
-cd sabanomisoni
-
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+1. [Git for Windows](https://git-scm.com/download/win) から **最新版の Git インストーラー** をダウンロードします。
+2. インストーラーを実行し、デフォルト設定のままインストールします。
 
 ---
 
-### ステップ 4 — 環境変数の設定
+### ステップ 4 — アプリケーションの配置
 
-```bash
-cp .env.example .env
-nano .env
+PowerShell（管理者権限）を開き、以下のコマンドを順番に実行します。
+
+```powershell
+# 作業ディレクトリに移動（例: C:\inetpub）
+cd C:\inetpub
+
+# リポジトリをクローン
+git clone https://github.com/<あなたのユーザー名>/sabanomisoni.git
+cd sabanomisoni
+
+# Python 仮想環境を作成
+python -m venv .venv
+
+# 仮想環境を有効化
+.\.venv\Scripts\Activate.ps1
+
+# 依存ライブラリをインストール
+pip install -r requirements.txt
 ```
 
-以下の内容を書き換えます。
+> **注意**: PowerShell の実行ポリシーでスクリプト実行がブロックされる場合、以下を実行してください。
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
+
+---
+
+### ステップ 5 — 環境変数の設定
+
+```powershell
+# .env ファイルを作成
+Copy-Item .env.example .env
+
+# メモ帳で編集
+notepad .env
+```
+
+以下の内容を書き換えて保存します。
 
 ```
-SECRET_KEY=ランダムな長い文字列
+SECRET_KEY=（例: a1b2c3d4e5f6... のようなランダムな文字列）
 DATABASE_URL=mysql+pymysql://sabauser:あなたのパスワード@localhost/saba_miso
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=強力なパスワード
 ```
 
+> **ヒント**: `SECRET_KEY` にランダムな文字列を生成するには、PowerShell で以下を実行してください。
+> ```powershell
+> -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 64 | ForEach-Object {[char]$_})
+> ```
+
 ---
 
-### ステップ 5 — データベースの初期化
+### ステップ 6 — データベースの初期化
 
-```bash
+仮想環境が有効化されている状態で、以下を実行します。
+
+```powershell
 flask --app app.py init-db
 ```
 
----
-
-### ステップ 6 — Gunicorn を自動起動サービスとして登録
-
-```bash
-sudo nano /etc/systemd/system/sabanomisoni.service
-```
-
-```ini
-[Unit]
-Description=Sabanomisoni Gunicorn Service
-After=network.target
-
-[Service]
-User=あなたのユーザー名
-Group=あなたのユーザー名
-WorkingDirectory=/home/あなたのユーザー名/sabanomisoni
-EnvironmentFile=/home/あなたのユーザー名/sabanomisoni/.env
-ExecStart=/home/あなたのユーザー名/sabanomisoni/.venv/bin/gunicorn \
-    --workers 2 \
-    --bind unix:/run/sabanomisoni.sock \
-    app:app
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable sabanomisoni
-sudo systemctl start sabanomisoni
-sudo systemctl status sabanomisoni
-```
+「Created admin user: admin」と表示されれば成功です。
 
 ---
 
-### ステップ 7 — Nginx のリバースプロキシ設定
+### ステップ 7 — IIS のインストールと設定
 
-```bash
-sudo nano /etc/nginx/sites-available/sabanomisoni
+#### 7-1. IIS と必要な機能をインストール
+
+1. **サーバーマネージャー** を開きます。
+2. 「**役割と機能の追加**」をクリックします。
+3. 「**役割ベースまたは機能ベースのインストール**」を選択し、次へ進みます。
+4. 「**Web サーバー (IIS)**」にチェックを入れ、必要な機能を追加します。
+5. 「**アプリケーション開発**」から以下にチェックを入れます。
+   - CGI
+   - WebSocket プロトコル
+6. インストールを完了します。
+
+#### 7-2. HttpPlatformHandler モジュールのインストール
+
+1. [HttpPlatformHandler v1.2](https://www.iis.net/downloads/microsoft/httpplatformhandler) をダウンロードしてインストールします。
+2. サーバーを再起動します。
+
+---
+
+### ステップ 8 — IIS サイトの作成と設定
+
+1. **IIS マネージャー** を開きます（スタートメニューから「inetmgr」で検索）。
+2. 左のツリーから「**サイト**」を右クリック → 「**Web サイトの追加**」を選択します。
+3. 以下のように設定します。
+   - サイト名: `sabanomisoni`
+   - 物理パス: `C:\inetpub\sabanomisoni`
+   - バインド: HTTP、ポート 80、ホスト名は空欄（すべて受け付ける）
+4. 「OK」をクリックしてサイトを作成します。
+5. 作成したサイトを選択し、「**ハンドラー マッピング**」を開きます。
+6. 右側の「**モジュール マップの追加**」をクリックし、以下を設定します。
+   - 要求パス: `*`
+   - モジュール: `HttpPlatformHandler`
+   - 実行可能ファイル: （空欄のまま）
+   - 名前: `Python Application`
+7. サイトのルートに `web.config` ファイルを作成します。
+
+```powershell
+notepad C:\inetpub\sabanomisoni\web.config
 ```
 
-```nginx
-server {
-    listen 80;
-    server_name _;  # _ はすべてのホスト名を受け付けるという意味。独自ドメインがある場合は example.com のように変更
+以下の内容を貼り付けて保存します。
 
-    location / {
-        proxy_pass http://unix:/run/sabanomisoni.sock;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <system.webServer>
+    <handlers>
+      <add name="httpPlatformHandler" path="*" verb="*" modules="httpPlatformHandler" resourceType="Unspecified" />
+    </handlers>
+    <httpPlatform processPath="C:\inetpub\sabanomisoni\.venv\Scripts\python.exe"
+                  arguments="-m gunicorn --bind 127.0.0.1:%HTTP_PLATFORM_PORT% --workers 2 app:app"
+                  stdoutLogEnabled="true"
+                  stdoutLogFile="C:\inetpub\sabanomisoni\logs\stdout.log"
+                  startupTimeLimit="60"
+                  requestTimeout="00:04:00">
+      <environmentVariables>
+        <environmentVariable name="PYTHONPATH" value="C:\inetpub\sabanomisoni" />
+      </environmentVariables>
+    </httpPlatform>
+  </system.webServer>
+</configuration>
 ```
 
-```bash
-sudo ln -s /etc/nginx/sites-available/sabanomisoni /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
+8. ログ出力用のフォルダを作成します。
+
+```powershell
+New-Item -ItemType Directory -Path C:\inetpub\sabanomisoni\logs -Force
+```
+
+9. IIS マネージャーでサイトを再起動します（右クリック → 停止 → 開始）。
+
+---
+
+### ステップ 9 — ファイアウォールの設定
+
+PowerShell（管理者権限）で以下を実行し、HTTP (ポート 80) を外部に公開します。
+
+```powershell
+New-NetFirewallRule -DisplayName "Allow HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
 ```
 
 ---
 
-### ステップ 8 — ファイアウォールの設定
+### ステップ 10 — 動作確認
 
-```bash
-# HTTP のみ外部公開、SSH は管理用に残す
-sudo ufw allow 'Nginx HTTP'
-sudo ufw allow OpenSSH
-sudo ufw enable
-```
+ブラウザで `http://<サーバーのIPアドレス>` または `http://localhost` にアクセスして掲示板が表示されれば完了です。
 
-ブラウザで `http://<サーバーのIPアドレス>` にアクセスして掲示板が表示されれば完了です。
+---
+
+### トラブルシューティング
+
+- **503 エラーが出る場合**: `C:\inetpub\sabanomisoni\logs\stdout.log` を確認してエラー内容を確認してください。
+- **仮想環境のパスエラー**: `web.config` 内の Python.exe と gunicorn のパスが正しいか確認してください。
+- **データベース接続エラー**: `.env` ファイルの `DATABASE_URL` が正しいか、MySQL サービスが起動しているか確認してください。
 
 ---
 
 ### 共通の注意事項
 
-- **IP 記録と BAN 判定**を正しく動作させるため、Nginx の設定で `X-Forwarded-For` ヘッダーを渡すよう設定しています（上記設定に含まれています）。
-- 本番運用では HTTPS (SSL/TLS) の設定を強く推奨します。[Let's Encrypt](https://letsencrypt.org/) を使えば無料で証明書を取得できます（`sudo apt install certbot python3-certbot-nginx` → `sudo certbot --nginx`）。
+- **IP 記録と BAN 判定**を正しく動作させるため、IIS の設定で `X-Forwarded-For` ヘッダーを渡すよう設定しています（上記 `web.config` に含まれています）。
+- 本番運用では HTTPS (SSL/TLS) の設定を強く推奨します。IIS では証明書をインポートし、バインドで HTTPS (ポート 443) を設定してください。
 - `.env` ファイルには秘密情報が含まれています。Git にコミットしないよう注意してください（`.gitignore` に設定済み）。
+- Windows Server では定期的な Windows Update の実行と、セキュリティパッチの適用を忘れずに行ってください。
