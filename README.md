@@ -575,19 +575,14 @@ notepad C:\inetpub\sabanomisoni\web.config
     <handlers>
       <add name="httpPlatformHandler" path="*" verb="*" modules="httpPlatformHandler" resourceType="Unspecified" />
     </handlers>
-    <!--
-      processPath に仮想環境の python.exe を指定し、run_waitress.py を起動します。
-      run_waitress.py が .env の読み込みと Waitress の起動を担います。
-      %APPL_PHYSICAL_PATH% は IIS がアプリケーションの物理パスに展開します。
-    -->
-    <httpPlatform processPath="%APPL_PHYSICAL_PATH%\.venv\Scripts\python.exe"
-                  arguments="%APPL_PHYSICAL_PATH%\run_waitress.py"
+    <httpPlatform processPath="C:\inetpub\sabanomisoni\.venv\Scripts\python.exe"
+                  arguments="C:\inetpub\sabanomisoni\run_waitress.py"
                   stdoutLogEnabled="true"
-                  stdoutLogFile="%APPL_PHYSICAL_PATH%\logs\stdout.log"
+                  stdoutLogFile="C:\inetpub\sabanomisoni\logs\stdout.log"
                   startupTimeLimit="120"
                   requestTimeout="00:04:00">
       <environmentVariables>
-        <environmentVariable name="PYTHONPATH" value="%APPL_PHYSICAL_PATH%" />
+        <environmentVariable name="PYTHONPATH" value="C:\inetpub\sabanomisoni" />
         <environmentVariable name="PYTHONUNBUFFERED" value="1" />
       </environmentVariables>
     </httpPlatform>
